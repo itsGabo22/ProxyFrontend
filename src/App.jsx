@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { 
   Activity, 
@@ -23,14 +23,11 @@ import {
   MousePointerClick
 } from 'lucide-react';
 import { 
-  LineChart, 
-  Line, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Legend,
   AreaChart,
   Area
 } from 'recharts';
@@ -105,13 +102,17 @@ const App = () => {
     setCurrentPage(0);
   };
 
-  const getChartData = () => {
-    return [...logs].reverse().map(log => ({
+  // Memoize chart data to keep it stable
+  const chartData = useMemo(() => {
+    if (!logs || logs.length === 0) return [];
+    return [...logs].reverse().map((log, index) => ({
+      // Use unique key or timestamp
+      name: index, 
       time: new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       duration: log.durationMs,
       service: log.serviceId
     }));
-  };
+  }, [logs]);
 
   const StatusBadge = ({ status }) => (
     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${
@@ -197,30 +198,34 @@ const App = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden min-h-[480px] flex flex-col">
+            <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col min-h-[480px]">
               <div className="flex items-center justify-between mb-8 relative">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
                     <BarChart3 size={20} />
                   </div>
                   <h2 className="text-xl font-bold text-slate-800">Tendencias de Rendimiento</h2>
                 </div>
               </div>
               
-              <div className="flex-1 w-full relative">
+              <div className="flex-1 w-full relative min-h-[350px]">
                 {logs.length === 0 ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 animate-in fade-in zoom-in duration-500">
+                  <div className="absolute inset-x-0 inset-y-0 flex flex-col items-center justify-center text-center p-8 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
                     <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-indigo-500 mb-4">
                       <MousePointerClick size={32} />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-2">No hay datos disponibles</h3>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2 font-black uppercase tracking-tight">No hay datos</h3>
                     <p className="text-sm text-slate-500 max-w-[280px]">
-                      Para comenzar a visualizar las métricas de rendimiento, por favor presiona el botón <span className="font-bold text-indigo-600 uppercase tracking-tighter">Simular Carga</span> en la parte superior.
+                      Haz clic en <span className="font-bold text-indigo-600">Simular Carga</span> para generar actividad y ver la gráfica.
                     </p>
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={getChartData()}>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <AreaChart 
+                      key={`chart-${logs.length}`} // Force re-render when data length changes
+                      data={chartData} 
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                    >
                       <defs>
                         <linearGradient id="colorDur" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
@@ -269,14 +274,14 @@ const App = () => {
               </div>
               
               <div className="overflow-x-auto">
-                <table className="w-full text-left">
+                <table className="w-full text-left border-collapse">
                   <thead className="text-[11px] font-black uppercase text-slate-400 tracking-widest bg-slate-50">
                     <tr>
-                      <th className="px-6 py-4">Hora</th>
-                      <th className="px-6 py-4">Servicio</th>
-                      <th className="px-6 py-4">Estado</th>
-                      <th className="px-6 py-4">Operación</th>
-                      <th className="px-6 py-4 text-right">Duración</th>
+                      <th className="px-6 py-4 border-b border-slate-100">Hora</th>
+                      <th className="px-6 py-4 border-b border-slate-100">Servicio</th>
+                      <th className="px-6 py-4 border-b border-slate-100">Estado</th>
+                      <th className="px-6 py-4 border-b border-slate-100">Operación</th>
+                      <th className="px-6 py-4 border-b border-slate-100 text-right">Duración</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
@@ -286,7 +291,7 @@ const App = () => {
                           <td className="px-6 py-4 font-mono text-[10px] text-indigo-600">
                              {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                           </td>
-                          <td className="px-6 py-4 capitalize text-slate-700 text-sm">{log.serviceId}</td>
+                          <td className="px-6 py-4 capitalize text-slate-700 text-sm font-bold">{log.serviceId}</td>
                           <td className="px-6 py-4"><StatusBadge status={log.status} /></td>
                           <td className="px-6 py-4 text-slate-600 italic text-sm">{log.operation}</td>
                           <td className="px-6 py-4 text-right font-bold text-slate-800">{log.durationMs}ms</td>
@@ -303,8 +308,8 @@ const App = () => {
                     ))}
                     {logs.length === 0 && (
                       <tr>
-                        <td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic text-xs">
-                          No se han encontrado registros de auditoría.
+                        <td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic text-xs bg-slate-50/30">
+                          No hay registros disponibles.
                         </td>
                       </tr>
                     )}
