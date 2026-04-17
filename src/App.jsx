@@ -19,7 +19,8 @@ import {
   ChevronRight,
   RotateCcw,
   ShieldAlert,
-  Zap
+  Zap,
+  MousePointerClick
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -196,7 +197,7 @@ const App = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden min-h-[480px] flex flex-col">
               <div className="flex items-center justify-between mb-8 relative">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
@@ -205,22 +206,35 @@ const App = () => {
                   <h2 className="text-xl font-bold text-slate-800">Tendencias de Rendimiento</h2>
                 </div>
               </div>
-              <div className="h-[350px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={getChartData()}>
-                    <defs>
-                      <linearGradient id="colorDur" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
-                    <YAxis unit="ms" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
-                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontSize: '12px' }} />
-                    <Area name="Latencia" type="monotone" dataKey="duration" stroke="#6366f1" strokeWidth={3} fill="url(#colorDur)" activeDot={{ r: 6, strokeWidth: 0 }} />
-                  </AreaChart>
-                </ResponsiveContainer>
+              
+              <div className="flex-1 w-full relative">
+                {logs.length === 0 ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200 animate-in fade-in zoom-in duration-500">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-indigo-500 mb-4">
+                      <MousePointerClick size={32} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">No hay datos disponibles</h3>
+                    <p className="text-sm text-slate-500 max-w-[280px]">
+                      Para comenzar a visualizar las métricas de rendimiento, por favor presiona el botón <span className="font-bold text-indigo-600 uppercase tracking-tighter">Simular Carga</span> en la parte superior.
+                    </p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={getChartData()}>
+                      <defs>
+                        <linearGradient id="colorDur" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
+                      <YAxis unit="ms" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                      <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontSize: '12px' }} />
+                      <Area name="Latencia" type="monotone" dataKey="duration" stroke="#6366f1" strokeWidth={3} fill="url(#colorDur)" activeDot={{ r: 6, strokeWidth: 0 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
 
@@ -287,6 +301,13 @@ const App = () => {
                         )}
                       </React.Fragment>
                     ))}
+                    {logs.length === 0 && (
+                      <tr>
+                        <td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic text-xs">
+                          No se han encontrado registros de auditoría.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
