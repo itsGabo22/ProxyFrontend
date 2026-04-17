@@ -1,29 +1,25 @@
-# Proxy Boot - Frontend
+# Proxy Boot - Frontend 💻
 
-Real-time observability dashboard for monitoring microservices.
+Dashboard de observabilidad en tiempo real para el monitoreo de microservicios.
 
-## Features
-- **Real-time Monitoring**: Uses polling every 3 seconds to fetch the latest metrics from the backend.
-- **Service Status Cards**: Dynamic cards showing total calls, success rate, and average duration.
-- **Alert System**: Services with > 15% error rate are highlighted in red.
-- **Log Explorer**: Detailed view of every request, including JSON input/output and stack traces for errors.
-- **Performance Analytics**: Time-series chart using **Recharts** to visualize duration trends.
+## Características
+- **Monitoreo en Tiempo Real**: Actualización automática cada 3 segundos.
+- **Tarjetas de Estado**: Resumen dinámico de peticiones, tasa de éxito y latencia media por servicio.
+- **Sistema de Alertas**: Resaltado visual para servicios con rendimiento inestable.
+- **Explorador de Auditoría**: Tabla detallada con soporte para filtros de servicio, estado y rango de fechas.
+- **Visualización de Datos**: Gráficos de área interactivos para tendencias de rendimiento usando **Recharts**.
 
-## Technology Stack
-- **React (Vite)**: Fast frontend framework.
-- **Tailwind CSS**: Modern utility-first styling.
-- **Recharts**: For data visualization.
-- **Lucide React**: For premium icons.
+## Tecnologías
+- **React (Vite)**
+- **Tailwind CSS 4**
+- **Lucide Icons**
+- **Axios**
 
-## Getting Started
-1. Navigate to the `frontend` folder.
-2. Run `npm install` to install dependencies.
-3. Run `npm run dev` to start the development server.
-4. Open `http://localhost:5173`.
+## Instalación y Uso
+1. Navega a la carpeta `frontend`.
+2. Ejecuta `npm install` para instalar las dependencias.
+3. Ejecuta `npm run dev` para iniciar el entorno de desarrollo.
+4. Abre `http://localhost:5173` en tu navegador.
 
-## Design
-The design follows a **Premium Light Academic** style:
-- Clean backgrounds.
-- High contrast for readability.
-- Glassmorphism effects for cards.
-- Professional typography (Inter).
+## Diseño
+El diseño sigue una estética **Premium Light Mode**, priorizando la legibilidad, el uso de sombras suaves y una estructura intuitiva para el usuario final.

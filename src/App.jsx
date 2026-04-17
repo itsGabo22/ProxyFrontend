@@ -17,7 +17,9 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  RotateCcw
+  RotateCcw,
+  ShieldAlert,
+  Zap
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -32,7 +34,7 @@ import {
   Area
 } from 'recharts';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://proxybackend-production.up.railway.app/api';
 
 const App = () => {
   const [metrics, setMetrics] = useState([]);
@@ -200,7 +202,7 @@ const App = () => {
                   <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
                     <BarChart3 size={20} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-800">Timeline de Operaciones</h2>
+                  <h2 className="text-xl font-bold text-slate-800">Tendencias de Rendimiento</h2>
                 </div>
               </div>
               <div className="h-[350px] w-full">
@@ -216,7 +218,7 @@ const App = () => {
                     <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
                     <YAxis unit="ms" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
                     <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontSize: '12px' }} />
-                    <Area name="Duración" type="monotone" dataKey="duration" stroke="#6366f1" strokeWidth={3} fill="url(#colorDur)" activeDot={{ r: 6, strokeWidth: 0 }} />
+                    <Area name="Latencia" type="monotone" dataKey="duration" stroke="#6366f1" strokeWidth={3} fill="url(#colorDur)" activeDot={{ r: 6, strokeWidth: 0 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -226,31 +228,27 @@ const App = () => {
               <div className="p-6 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-slate-50/50">
                 <div className="flex items-center gap-2">
                    <FileText size={18} className="text-slate-400" />
-                   <h3 className="font-bold text-slate-700 uppercase tracking-wider text-sm">Auditoría con Lista Doble</h3>
+                   <h3 className="font-bold text-slate-700 uppercase tracking-wider text-sm">Auditoría de Peticiones</h3>
                 </div>
                 <div className="flex flex-wrap gap-2 items-center">
-                  <select className="px-3 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl outline-none" value={filters.service} onChange={e => { setFilters({...filters, service: e.target.value}); setCurrentPage(0); }}>
+                  <select className="px-3 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl outline-none shadow-sm" value={filters.service} onChange={e => { setFilters({...filters, service: e.target.value}); setCurrentPage(0); }}>
                     <option value="">Servicios</option>
                     <option value="inventory">Inventario</option>
                     <option value="orders">Pedidos</option>
                     <option value="payments">Pagos</option>
                   </select>
-                  <select className="px-3 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl outline-none" value={filters.status} onChange={e => { setFilters({...filters, status: e.target.value}); setCurrentPage(0); }}>
+                  <select className="px-3 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl outline-none shadow-sm" value={filters.status} onChange={e => { setFilters({...filters, status: e.target.value}); setCurrentPage(0); }}>
                     <option value="">Estados</option>
                     <option value="SUCCESS">Éxito</option>
                     <option value="ERROR">Error</option>
                   </select>
-                  <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl border border-slate-200">
+                  <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl border border-slate-200 shadow-sm">
                     <Calendar size={14} className="text-slate-400" />
                     <input type="date" className="text-[10px] font-bold outline-none" value={filters.from} onChange={e => { setFilters({...filters, from: e.target.value}); setCurrentPage(0); }} />
                     <span className="text-slate-300">-</span>
                     <input type="date" className="text-[10px] font-bold outline-none" value={filters.to} onChange={e => { setFilters({...filters, to: e.target.value}); setCurrentPage(0); }} />
                   </div>
-                  <button 
-                    onClick={resetFilters}
-                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all"
-                    title="Limpiar filtros"
-                  >
+                  <button onClick={resetFilters} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all" title="Limpiar filtros">
                     <RotateCcw size={16} />
                   </button>
                 </div>
@@ -260,7 +258,7 @@ const App = () => {
                 <table className="w-full text-left">
                   <thead className="text-[11px] font-black uppercase text-slate-400 tracking-widest bg-slate-50">
                     <tr>
-                      <th className="px-6 py-4">ID</th>
+                      <th className="px-6 py-4">Hora</th>
                       <th className="px-6 py-4">Servicio</th>
                       <th className="px-6 py-4">Estado</th>
                       <th className="px-6 py-4">Operación</th>
@@ -271,8 +269,10 @@ const App = () => {
                     {logs.map(log => (
                       <React.Fragment key={log.requestId}>
                         <tr onClick={() => setSelectedLog(selectedLog?.requestId === log.requestId ? null : log)} className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedLog?.requestId === log.requestId ? 'bg-indigo-50/30' : ''}`}>
-                          <td className="px-6 py-4 font-mono text-[10px] text-slate-400">{log.requestId.split('-')[0]}</td>
-                          <td className="px-6 py-4 capitalize text-slate-700">{log.serviceId}</td>
+                          <td className="px-6 py-4 font-mono text-[10px] text-indigo-600">
+                             {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </td>
+                          <td className="px-6 py-4 capitalize text-slate-700 text-sm">{log.serviceId}</td>
                           <td className="px-6 py-4"><StatusBadge status={log.status} /></td>
                           <td className="px-6 py-4 text-slate-600 italic text-sm">{log.operation}</td>
                           <td className="px-6 py-4 text-right font-bold text-slate-800">{log.durationMs}ms</td>
@@ -304,7 +304,7 @@ const App = () => {
           <div className="space-y-6">
             <div className="bg-slate-900 rounded-3xl p-6 text-white overflow-hidden relative shadow-2xl">
               <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-indigo-500 rounded-full blur-3xl opacity-20"></div>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-400 mb-6">Estado de Salud</h3>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-400 mb-6">Estado del Sistema</h3>
               <div className="space-y-5">
                 {metrics.map(m => (
                   <div key={m.serviceId + '_stat'} className="flex items-center justify-between group">
@@ -313,26 +313,34 @@ const App = () => {
                       <span className="text-sm font-medium text-slate-300 capitalize group-hover:text-white transition-colors">{m.serviceId}</span>
                     </div>
                     <span className={`text-xs font-black p-1 rounded ${m.errorRate > 15 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      {m.errorRate > 15 ? 'Inestable' : 'Estable'}
+                      {m.errorRate > 15 ? 'Crítico' : 'Normal'}
                     </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-               <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">Estructura Interna</h3>
-               <p className="text-xs leading-relaxed text-slate-500 mb-4 italic">
-                 Este sistema utiliza **Listas Doblemente Enlazadas** para el manejo de los búfers de monitoreo, permitiendo una navegación bi-direccional eficiente en el historial de eventos capturados por el **Proxy**.
-               </p>
-               <div className="grid grid-cols-2 gap-3">
-                 <div className="bg-slate-50 p-3 rounded-xl">
-                   <p className="text-[10px] font-bold text-slate-400 mb-1 tracking-tight">Data Structure</p>
-                   <p className="text-xs font-bold text-slate-700 italic">Double Linked L.</p>
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-4 opacity-5 text-indigo-600">
+                 <ShieldAlert size={60} />
+               </div>
+               <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6 underline decoration-slate-100 underline-offset-8">Alertas Recientes</h3>
+               
+               <div className="space-y-4">
+                 <div className="flex items-start gap-3 p-3 bg-emerald-50 rounded-2xl border border-emerald-100">
+                    <CheckCircle2 size={16} className="text-emerald-500 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800">Sincronización Exitosa</p>
+                      <p className="text-[10px] text-emerald-600">Base de datos H2 operativa.</p>
+                    </div>
                  </div>
-                 <div className="bg-slate-50 p-3 rounded-xl">
-                   <p className="text-[10px] font-bold text-slate-400 mb-1 tracking-tight">Patrón Diseño</p>
-                   <p className="text-xs font-bold text-slate-700 italic">Proxy structural</p>
+                 
+                 <div className="flex items-start gap-3 p-3 bg-indigo-50 rounded-2xl border border-indigo-100">
+                    <Zap size={16} className="text-indigo-500 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-indigo-800">Carga Controlada</p>
+                      <p className="text-[10px] text-indigo-600">Proxy auditando peticiones entrantes.</p>
+                    </div>
                  </div>
                </div>
             </div>
