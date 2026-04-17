@@ -13,7 +13,11 @@ import {
   Cpu,
   LayoutDashboard,
   Search,
-  Filter
+  Filter,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -33,6 +37,8 @@ const API_BASE_URL = 'http://localhost:8080/api';
 const App = () => {
   const [metrics, setMetrics] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [simulating, setSimulating] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
@@ -51,20 +57,22 @@ const App = () => {
           params: { 
             service: filters.service || undefined,
             status: filters.status || undefined,
-            from: filters.from || undefined,
-            to: filters.to || undefined,
-            size: 20 
+            from: filters.from ? `${filters.from}T00:00:00` : undefined,
+            to: filters.to ? `${filters.to}T23:59:59` : undefined,
+            page: currentPage,
+            size: 10 
           } 
         })
       ]);
       setMetrics(metricsRes.data);
       setLogs(logsRes.data.content);
+      setTotalPages(logsRes.data.totalPages);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, currentPage]);
 
   useEffect(() => {
     fetchData();
@@ -76,12 +84,22 @@ const App = () => {
     setSimulating(true);
     try {
       await axios.post(`${API_BASE_URL}/metrics/simulate-load`);
-      fetchData();
+      setTimeout(fetchData, 500);
     } catch (error) {
       console.error('Simulation failed:', error);
     } finally {
       setSimulating(false);
     }
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      service: '',
+      status: '',
+      from: '',
+      to: ''
+    });
+    setCurrentPage(0);
   };
 
   const getChartData = () => {
@@ -102,7 +120,6 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-900">
-      {/* Sidebar / Topbar */}
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
@@ -123,9 +140,8 @@ const App = () => {
               <button 
                 onClick={handleSimulateLoad}
                 disabled={simulating}
-                className="group relative flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold transition-all disabled:opacity-50 overflow-hidden shadow-xl"
+                className="group relative flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold transition-all disabled:opacity-50 shadow-xl"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 {simulating ? <RefreshCcw className="animate-spin w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
                 <span className="relative">Simular Carga</span>
               </button>
@@ -135,13 +151,12 @@ const App = () => {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Metric Cards Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {metrics.map((m) => {
             const isUnhealthy = m.errorRate > 15;
             return (
-              <div key={m.serviceId} className={`relative group transition-all duration-300 transform hover:-translate-y-1`}>
-                <div className={`absolute -inset-0.5 bg-gradient-to-r ${isUnhealthy ? 'from-rose-500 to-red-400' : 'from-indigo-500 to-blue-400'} rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200`}></div>
+              <div key={m.serviceId} className="relative group transition-all duration-300 transform hover:-translate-y-1">
+                <div className={`absolute -inset-0.5 bg-gradient-to-r ${isUnhealthy ? 'from-rose-500 to-red-400' : 'from-indigo-500 to-blue-400'} rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000`}></div>
                 <div className="relative bg-white p-6 rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                   <div className="flex justify-between items-start mb-6">
                     <div>
@@ -152,14 +167,13 @@ const App = () => {
                       {m.serviceId === 'payments' ? <Cpu size={24} /> : m.serviceId === 'orders' ? <LayoutDashboard size={24} /> : <Activity size={24} />}
                     </div>
                   </div>
-
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-1">
                       <p className="text-[10px] uppercase font-bold text-slate-400">Peticiones</p>
                       <p className="text-lg font-black text-slate-700">{m.totalCalls}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-[10px] uppercase font-bold text-slate-400">Tasa Éxito</p>
+                      <p className="text-[10px] uppercase font-bold text-slate-400">Éxito</p>
                       <p className={`text-lg font-black ${isUnhealthy ? 'text-rose-600' : 'text-emerald-600'}`}>
                         {(100 - m.errorRate).toFixed(1)}%
                       </p>
@@ -169,12 +183,8 @@ const App = () => {
                       <p className="text-lg font-black text-slate-700">{Math.round(m.avgResponseTime)}<span className="text-xs font-normal text-slate-400 ml-1">ms</span></p>
                     </div>
                   </div>
-
                   <div className="mt-6 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-1000 ease-out ${isUnhealthy ? 'bg-rose-500' : 'bg-emerald-500'}`} 
-                      style={{ width: `${100 - m.errorRate}%` }}
-                    ></div>
+                    <div className={`h-full transition-all duration-1000 ease-out ${isUnhealthy ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${100 - m.errorRate}%` }}></div>
                   </div>
                 </div>
               </div>
@@ -183,12 +193,8 @@ const App = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Chart Area */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-5">
-                <BarChart3 size={120} />
-              </div>
               <div className="flex items-center justify-between mb-8 relative">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
@@ -196,14 +202,8 @@ const App = () => {
                   </div>
                   <h2 className="text-xl font-bold text-slate-800">Timeline de Operaciones</h2>
                 </div>
-                <div className="flex gap-2">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg">
-                    <Clock size={12} /> Últimas 20 llamadas
-                  </span>
-                </div>
               </div>
-              
-              <div className="h-[350px] w-full mt-4">
+              <div className="h-[350px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={getChartData()}>
                     <defs>
@@ -213,66 +213,46 @@ const App = () => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis 
-                      dataKey="time" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 10, fill: '#94a3b8' }}
-                      dy={10}
-                    />
-                    <YAxis 
-                      unit="ms" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        borderRadius: '16px', 
-                        border: 'none', 
-                        boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
-                        padding: '12px 16px',
-                        fontSize: '12px'
-                      }}
-                      itemStyle={{ fontWeight: 'bold' }}
-                    />
-                    <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 'bold' }} />
-                    <Area 
-                      name="Tiempo de Respuesta" 
-                      type="monotone" 
-                      dataKey="duration" 
-                      stroke="#6366f1" 
-                      strokeWidth={3} 
-                      fillOpacity={1} 
-                      fill="url(#colorDur)" 
-                      activeDot={{ r: 6, strokeWidth: 0 }}
-                    />
+                    <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} dy={10} />
+                    <YAxis unit="ms" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px 16px', fontSize: '12px' }} />
+                    <Area name="Duración" type="monotone" dataKey="duration" stroke="#6366f1" strokeWidth={3} fill="url(#colorDur)" activeDot={{ r: 6, strokeWidth: 0 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Detailed Table */}
             <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div className="p-6 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-slate-50/50">
                 <div className="flex items-center gap-2">
                    <FileText size={18} className="text-slate-400" />
-                   <h3 className="font-bold text-slate-700 uppercase tracking-wider text-sm">Explorador de Auditoría</h3>
+                   <h3 className="font-bold text-slate-700 uppercase tracking-wider text-sm">Auditoría con Lista Doble</h3>
                 </div>
-                <div className="flex gap-2">
-                  <div className="relative">
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                    <select 
-                      className="pl-9 pr-4 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl appearance-none cursor-pointer focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                      value={filters.service}
-                      onChange={e => setFilters({...filters, service: e.target.value})}
-                    >
-                      <option value="">Todos los Servicios</option>
-                      <option value="inventory">Inventario</option>
-                      <option value="orders">Pedidos</option>
-                      <option value="payments">Pagos</option>
-                    </select>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <select className="px-3 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl outline-none" value={filters.service} onChange={e => { setFilters({...filters, service: e.target.value}); setCurrentPage(0); }}>
+                    <option value="">Servicios</option>
+                    <option value="inventory">Inventario</option>
+                    <option value="orders">Pedidos</option>
+                    <option value="payments">Pagos</option>
+                  </select>
+                  <select className="px-3 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl outline-none" value={filters.status} onChange={e => { setFilters({...filters, status: e.target.value}); setCurrentPage(0); }}>
+                    <option value="">Estados</option>
+                    <option value="SUCCESS">Éxito</option>
+                    <option value="ERROR">Error</option>
+                  </select>
+                  <div className="flex items-center gap-2 bg-white px-2 py-1 rounded-xl border border-slate-200">
+                    <Calendar size={14} className="text-slate-400" />
+                    <input type="date" className="text-[10px] font-bold outline-none" value={filters.from} onChange={e => { setFilters({...filters, from: e.target.value}); setCurrentPage(0); }} />
+                    <span className="text-slate-300">-</span>
+                    <input type="date" className="text-[10px] font-bold outline-none" value={filters.to} onChange={e => { setFilters({...filters, to: e.target.value}); setCurrentPage(0); }} />
                   </div>
+                  <button 
+                    onClick={resetFilters}
+                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all"
+                    title="Limpiar filtros"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
                 </div>
               </div>
               
@@ -280,7 +260,7 @@ const App = () => {
                 <table className="w-full text-left">
                   <thead className="text-[11px] font-black uppercase text-slate-400 tracking-widest bg-slate-50">
                     <tr>
-                      <th className="px-6 py-4">Request ID</th>
+                      <th className="px-6 py-4">ID</th>
                       <th className="px-6 py-4">Servicio</th>
                       <th className="px-6 py-4">Estado</th>
                       <th className="px-6 py-4">Operación</th>
@@ -290,68 +270,41 @@ const App = () => {
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {logs.map(log => (
                       <React.Fragment key={log.requestId}>
-                        <tr 
-                          onClick={() => setSelectedLog(selectedLog?.requestId === log.requestId ? null : log)}
-                          className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedLog?.requestId === log.requestId ? 'bg-indigo-50/30' : ''}`}
-                        >
+                        <tr onClick={() => setSelectedLog(selectedLog?.requestId === log.requestId ? null : log)} className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedLog?.requestId === log.requestId ? 'bg-indigo-50/30' : ''}`}>
                           <td className="px-6 py-4 font-mono text-[10px] text-slate-400">{log.requestId.split('-')[0]}</td>
-                          <td className="px-6 py-4">
-                            <span className="capitalize text-slate-700">{log.serviceId === 'payments' ? 'Pagos' : log.serviceId === 'orders' ? 'Pedidos' : 'Inventario'}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <StatusBadge status={log.status} />
-                          </td>
-                          <td className="px-6 py-4 text-slate-600 italic text-sm font-normal">
-                            {log.operation}
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                             <span className="font-bold text-slate-800">{log.durationMs}</span>
-                             <span className="text-[10px] text-slate-400 ml-1 font-normal italic">ms</span>
-                          </td>
+                          <td className="px-6 py-4 capitalize text-slate-700">{log.serviceId}</td>
+                          <td className="px-6 py-4"><StatusBadge status={log.status} /></td>
+                          <td className="px-6 py-4 text-slate-600 italic text-sm">{log.operation}</td>
+                          <td className="px-6 py-4 text-right font-bold text-slate-800">{log.durationMs}ms</td>
                         </tr>
                         {selectedLog?.requestId === log.requestId && (
-                          <tr>
-                            <td colSpan="5" className="px-8 py-6 bg-slate-50/80">
-                              <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="space-y-4">
-                                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-                                     <div className="absolute top-0 right-0 p-2 opacity-5 text-indigo-600"><Cpu size={40}/></div>
-                                     <h4 className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-3">Parámetros de Entrada</h4>
-                                     <code className="text-xs text-slate-600 block leading-relaxed">{log.inputParams}</code>
-                                  </div>
-                                </div>
-                                <div className="space-y-4">
-                                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden h-full">
-                                     <div className="absolute top-0 right-0 p-2 opacity-5 text-indigo-600"><Search size={40}/></div>
-                                     <h4 className="text-[10px] font-black uppercase text-indigo-500 tracking-widest mb-3">Cuerpo de la Respuesta</h4>
-                                     <code className="text-xs text-slate-600 block leading-relaxed break-all">
-                                       {log.status === 'SUCCESS' ? log.responseBody : (
-                                         <div className="text-rose-600">
-                                           <p className="font-bold mb-1">{log.errorMessage}</p>
-                                           <p className="text-[10px] opacity-70 whitespace-pre-wrap">{log.stackTrace}</p>
-                                         </div>
-                                       )}
-                                     </code>
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
+                          <tr><td colSpan="5" className="px-8 py-6 bg-slate-50/80">
+                            <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-300 text-[11px]">
+                              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><h4 className="font-black text-indigo-500 mb-2 uppercase tracking-widest leading-none">Entrada</h4><code className="text-slate-600 block">{log.inputParams}</code></div>
+                              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><h4 className="font-black text-indigo-500 mb-2 uppercase tracking-widest leading-none">Respuesta</h4><code className="text-slate-600 block break-all">{log.status === 'SUCCESS' ? log.responseBody : log.errorMessage}</code></div>
+                            </div>
+                          </td></tr>
                         )}
                       </React.Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
+
+              <div className="p-4 border-t border-slate-100 bg-white flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Página {currentPage + 1} de {totalPages || 1}</span>
+                <div className="flex gap-2">
+                  <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 transition-colors"><ChevronLeft size={16}/></button>
+                  <button onClick={() => setCurrentPage(Math.min(totalPages - 1, currentPage + 1))} disabled={currentPage >= totalPages - 1} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 transition-colors"><ChevronRight size={16}/></button>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Right Column: Mini Stats / Activity */}
           <div className="space-y-6">
             <div className="bg-slate-900 rounded-3xl p-6 text-white overflow-hidden relative shadow-2xl">
               <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-indigo-500 rounded-full blur-3xl opacity-20"></div>
               <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-400 mb-6">Estado de Salud</h3>
-              
               <div className="space-y-5">
                 {metrics.map(m => (
                   <div key={m.serviceId + '_stat'} className="flex items-center justify-between group">
@@ -365,31 +318,21 @@ const App = () => {
                   </div>
                 ))}
               </div>
-
-              <div className="mt-8 pt-8 border-t border-slate-800 flex items-center justify-between">
-                <div>
-                   <p className="text-[10px] uppercase font-bold text-slate-500 tracking-tight">Backend Activo</p>
-                   <p className="text-xs font-mono text-slate-300">v1.0.0-PROX</p>
-                </div>
-                <div className="p-2 bg-indigo-500 rounded-xl">
-                  <Cpu size={18} />
-                </div>
-              </div>
             </div>
 
             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-               <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">Sobre Proxy Boot</h3>
-               <p className="text-xs leading-relaxed text-slate-500 mb-4">
-                 Sistema de auditoría perimetral basado en el **Patrón Proxy**. Intercepta y valida peticiones en tiempo real para generar diagnósticos de salud sistémica.
+               <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">Estructura Interna</h3>
+               <p className="text-xs leading-relaxed text-slate-500 mb-4 italic">
+                 Este sistema utiliza **Listas Doblemente Enlazadas** para el manejo de los búfers de monitoreo, permitiendo una navegación bi-direccional eficiente en el historial de eventos capturados por el **Proxy**.
                </p>
                <div className="grid grid-cols-2 gap-3">
                  <div className="bg-slate-50 p-3 rounded-xl">
-                   <p className="text-[10px] font-bold text-slate-400 mb-1 tracking-tight">Persistencia</p>
-                   <p className="text-xs font-bold text-slate-700">H2 File DB</p>
+                   <p className="text-[10px] font-bold text-slate-400 mb-1 tracking-tight">Data Structure</p>
+                   <p className="text-xs font-bold text-slate-700 italic">Double Linked L.</p>
                  </div>
                  <div className="bg-slate-50 p-3 rounded-xl">
-                   <p className="text-[10px] font-bold text-slate-400 mb-1 tracking-tight">Arquitectura</p>
-                   <p className="text-xs font-bold text-slate-700">Clean Layered</p>
+                   <p className="text-[10px] font-bold text-slate-400 mb-1 tracking-tight">Patrón Diseño</p>
+                   <p className="text-xs font-bold text-slate-700 italic">Proxy structural</p>
                  </div>
                </div>
             </div>
